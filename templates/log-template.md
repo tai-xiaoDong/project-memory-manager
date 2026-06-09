@@ -1,7 +1,5 @@
-# Activity Log (latest 15 entries)
+# Activity Log — <CURRENT_DATE>
 
-## [<CURRENT_DATE>] Initialize project memory system
-- **Change**: Added dev-log, summary file and archive directory, enabled AI project memory management
-- **Deps**: none
-- **Gotcha**: none
+### [HH:MM] Initialize project memory system @author
+- **Change**: Added dev-log directory, summary file and archive directory, enabled AI project memory management
 - **TODO**: Fill in core constraints based on actual project

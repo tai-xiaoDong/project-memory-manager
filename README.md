@@ -21,8 +21,8 @@
 │                  dev-log-summary.md                  │
 │         (Permanent constraints & decisions)          │
 ├─────────────────────────────────────────────────────┤
-│                    dev-log.md                        │
-│        (Rolling window — latest 15 entries)          │
+│                 dev-log/ (daily files)                │
+│        (Rolling window — max 15 daily files)          │
 │                                                      │
 │   New entry arrives ──► oldest 5 auto-archived ──►   │
 ├─────────────────────────────────────────────────────┤
@@ -32,19 +32,19 @@
 ```
 
 Every time the AI completes a code change, it:
-1. Appends a structured entry to `dev-log.md`
-2. Syncs critical changes to `dev-log-summary.md`
-3. Auto-archives overflow entries (with experience extraction)
+1. Appends a structured entry to `docs/dev-log/YYYY-MM-DD.md`
+2. Syncs critical changes to `docs/dev-log-summary.md`
+3. Auto-archives overflow daily files (with experience extraction)
 
 ## ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| **Rolling Window** | Keeps only the latest 15 log entries — old ones auto-archive by quarter |
+| **Rolling Window** | Keeps only the latest 15 daily log files — old ones auto-archive by quarter |
 | **Experience Extraction** | Recurring pitfalls (`⚠️` or `#promote`) get promoted to Summary (with user confirmation) |
-| **Circuit Breaker** | Stops code generation if logs exceed 200 lines / 30 entries |
+| **Circuit Breaker** | Stops code generation if a daily file exceeds 200 lines or total exceeds 30 files |
 | **Session Cache** | Reads memory files once per session, re-reads only on explicit trigger |
-| **Monorepo Support** | Global summary + per-package logs, sub-package takes priority on conflict |
+| **Monorepo Support** | Global summary + per-package logs, global Summary is the hard constraint on conflict |
 | **Audit Trail** | Optional change history tracking (default OFF, enable on demand) |
 | **Validation Script** | Bash-based consistency checker — no Python required |
 
@@ -59,7 +59,7 @@ project-memory-manager/
 │   └── validate.sh              # Log consistency validator
 └── templates/
     ├── summary-template.md      # Template for dev-log-summary.md
-    └── log-template.md          # Template for dev-log.md
+    └── log-template.md          # Template for daily log files
 ```
 
 ## 🚀 Installation
@@ -71,7 +71,7 @@ project-memory-manager/
 cp -r project-memory-manager/ .claude/skills/project-memory-manager/
 ```
 
-### VS Code Extension (Claude / Cursor / Windsurf)
+### VS Code Extension (Claude / Cursor)
 
 ```bash
 # Option A: Claude Code skill directory
@@ -85,10 +85,9 @@ cat project-memory-manager/SKILL.md >> CLAUDE.md
 
 | Tool | Location |
 |------|----------|
-| Cursor | `.cursorrules` or `CLAUDE.md` in project root |
-| Windsurf | `.windsurfrules` or `AGENTS.md` in project root |
-| GitHub Copilot | `.github/copilot-instructions.md` |
-| Cline | `AGENTS.md` or `.claude/skills/` |
+| Cursor | `.cursorrules` in project root |
+| Continue | `.continue.rules` in project root |
+| GitHub Copilot | `AGENTS.md` in project root |
 
 ## 📖 Usage
 
@@ -98,15 +97,15 @@ Say to your AI assistant:
 
 > "Initialize project memory files. My tech stack is [your tech stack]."
 
-The AI will create `docs/dev-log.md`, `docs/dev-log-summary.md`, and `docs/dev-log-archive/.gitkeep` using the templates.
+The AI will create `docs/dev-log/`, `docs/dev-log-summary.md`, and `docs/dev-log-archive/` using the templates.
 
 ### Daily Workflow
 
 No extra commands needed. The AI automatically:
 
 1. **Reads** memory files before any coding task
-2. **Writes** a log entry after each code change
-3. **Archives** old entries when the log exceeds 15 entries
+2. **Writes** a log entry after each code change (appends to today's daily file)
+3. **Archives** old daily files when the log directory exceeds 15 files
 4. **Promotes** recurring pitfalls to Summary (asks for confirmation)
 
 ### Manual Commands
@@ -118,27 +117,28 @@ No extra commands needed. The AI automatically:
 | `"Enable audit trail"` | Turn on change history in Summary |
 | `"@disable auto-archive"` | Skip auto-archiving for this session |
 | `"Archive old entries now"` | Manually trigger archival |
+| `"Uninstall project memory"` | Remove injected rules and validation script (keeps log data) |
 
 ### Validation
 
 Run the consistency checker anytime:
 
 ```bash
-bash .claude/skills/project-memory-manager/scripts/validate.sh docs/dev-log.md
+bash scripts/validate.sh docs/dev-log/
 
 # With summary validation:
-bash .claude/skills/project-memory-manager/scripts/validate.sh docs/dev-log.md --summary docs/dev-log-summary.md
+bash scripts/validate.sh docs/dev-log/ --summary docs/dev-log-summary.md
 
 # Strict mode (warnings = errors):
-bash .claude/skills/project-memory-manager/scripts/validate.sh docs/dev-log.md --strict
+bash scripts/validate.sh docs/dev-log/ --strict
 ```
 
 ## 📋 Log Entry Format
 
-Each entry in `dev-log.md` follows this structure (≤ 500 chars):
+Each entry in `docs/dev-log/YYYY-MM-DD.md` follows this structure (≤ 500 chars):
 
 ```markdown
-## [2026-06-09] Add Redis caching to user API
+### [14:30] Add Redis caching to user API @alice
 - **Change**: Replaced in-memory cache with Redis for /api/users endpoint
 - **Deps**: added redis@5.0.0, removed node-cache
 - **Gotcha**: Redis URL must use rediss:// (TLS) in production — connection hangs silently with redis://
@@ -153,16 +153,16 @@ docs/
 packages/
   auth/
     docs/
-      dev-log.md           # Auth-specific changes
+      dev-log/             # Auth-specific daily logs
       dev-log-archive/
   api/
     docs/
-      dev-log.md           # API-specific changes
+      dev-log/             # API-specific daily logs
 ```
 
-- AI reads **both** global Summary + current package's dev-log
-- **Sub-package takes priority** on conflict
-- Only updates the current package's dev-log unless change is cross-cutting
+- AI reads **both** global Summary + current package's daily logs
+- **Global Summary takes priority** on conflict (hard constraints override sub-package preferences)
+- Only updates the current package's daily logs unless change is cross-cutting
 
 ## 🔧 Troubleshooting
 
@@ -196,10 +196,10 @@ MIT — see [LICENSE.txt](LICENSE.txt).
 │                  dev-log-summary.md                  │
 │             （永久约束、重大问题、待办）                │
 ├─────────────────────────────────────────────────────┤
-│                    dev-log.md                        │
-│         （滚动窗口 — 仅保留最近 15 条）                 │
+│               dev-log/（按日期拆分）                   │
+│         （滚动窗口 — 最多保留 15 个日志文件）            │
 │                                                      │
-│   新条目写入 ──► 最旧 5 条自动归档 ──►                 │
+│   新条目写入 ──► 最旧 5 个文件自动归档 ──►             │
 ├─────────────────────────────────────────────────────┤
 │                 dev-log-archive/                      │
 │        （历史归档 — 按季度拆分，如 2026-Q2）            │
@@ -207,19 +207,19 @@ MIT — see [LICENSE.txt](LICENSE.txt).
 ```
 
 每当 AI 完成一次代码变更时，它会：
-1. 向 `dev-log.md` 追加一条结构化记录
-2. 将关键变更同步到 `dev-log-summary.md`
-3. 自动归档溢出条目（并提取经验）
+1. 向 `docs/dev-log/YYYY-MM-DD.md` 追加一条结构化记录
+2. 将关键变更同步到 `docs/dev-log-summary.md`
+3. 自动归档溢出的日志文件（并提取经验）
 
 ## ✨ 核心特性
 
 | 特性 | 说明 |
 |------|------|
-| **滚动窗口** | 仅保留最近 15 条日志 — 旧条目按季度自动归档 |
+| **滚动窗口** | 仅保留最近 15 个日志文件 — 旧文件按季度自动归档 |
 | **经验提取** | 反复出现的坑（标记 `⚠️` 或 `#promote`）会被提升到摘要层（需用户确认） |
-| **熔断机制** | 日志超过 200 行 / 30 条时停止生成代码 |
+| **熔断机制** | 单文件超过 200 行或总数超过 30 个文件时停止生成代码 |
 | **会话缓存** | 每次会话仅读取一次记忆文件，仅在明确触发时重新读取 |
-| **Monorepo 支持** | 全局摘要 + 各包独立日志，冲突时以子包为准 |
+| **Monorepo 支持** | 全局摘要 + 各包独立日志，冲突时全局摘要为硬约束优先 |
 | **审计追踪** | 可选的变更历史记录（默认关闭，按需开启） |
 | **校验脚本** | 基于 Bash 的一致性校验器 — 无需 Python 环境 |
 
@@ -234,7 +234,7 @@ project-memory-manager/
 │   └── validate.sh              # 日志一致性校验脚本
 └── templates/
     ├── summary-template.md      # dev-log-summary.md 模板
-    └── log-template.md          # dev-log.md 模板
+    └── log-template.md          # 每日日志文件模板
 ```
 
 ## 🚀 安装
@@ -246,7 +246,7 @@ project-memory-manager/
 cp -r project-memory-manager/ .claude/skills/project-memory-manager/
 ```
 
-### VS Code 扩展（Claude / Cursor / Windsurf）
+### VS Code 扩展（Claude / Cursor）
 
 ```bash
 # 方式 A：Claude Code skill 目录
@@ -260,10 +260,9 @@ cat project-memory-manager/SKILL.md >> CLAUDE.md
 
 | 工具 | 放置位置 |
 |------|---------|
-| Cursor | 项目根目录的 `.cursorrules` 或 `CLAUDE.md` |
-| Windsurf | 项目根目录的 `.windsurfrules` 或 `AGENTS.md` |
-| GitHub Copilot | `.github/copilot-instructions.md` |
-| Cline | `AGENTS.md` 或 `.claude/skills/` |
+| Cursor | 项目根目录的 `.cursorrules` |
+| Continue | 项目根目录的 `.continue.rules` |
+| GitHub Copilot | 项目根目录的 `AGENTS.md` |
 
 ## 📖 使用方法
 
@@ -273,15 +272,15 @@ cat project-memory-manager/SKILL.md >> CLAUDE.md
 
 > "请根据 project-memory-manager skill 初始化项目记忆文件，我的技术栈是 [你的技术栈]"
 
-AI 会使用模板创建 `docs/dev-log.md`、`docs/dev-log-summary.md` 和 `docs/dev-log-archive/.gitkeep`。
+AI 会使用模板创建 `docs/dev-log/`、`docs/dev-log-summary.md` 和 `docs/dev-log-archive/`。
 
 ### 日常使用
 
 无需额外指令。AI 会自动：
 
 1. **读取** — 编码任务前自动加载记忆文件
-2. **写入** — 每次代码变更后追加日志条目
-3. **归档** — 日志超过 15 条时自动归档旧条目
+2. **写入** — 每次代码变更后追加日志条目到当天的日志文件
+3. **归档** — 日志文件超过 15 个时自动归档旧文件
 4. **提取** — 反复出现的坑会被提示提升到摘要层（需确认）
 
 ### 手动指令
@@ -293,27 +292,28 @@ AI 会使用模板创建 `docs/dev-log.md`、`docs/dev-log-summary.md` 和 `docs
 | `"启用审计追踪"` | 在摘要中开启变更历史记录 |
 | `"@disable auto-archive"` | 本次会话跳过自动归档 |
 | `"现在归档旧条目"` | 手动触发归档 |
+| `"卸载 project memory"` | 移除注入的规则和校验脚本（保留日志数据） |
 
 ### 校验
 
 随时运行一致性校验：
 
 ```bash
-bash .claude/skills/project-memory-manager/scripts/validate.sh docs/dev-log.md
+bash scripts/validate.sh docs/dev-log/
 
 # 同时校验摘要文件：
-bash .claude/skills/project-memory-manager/scripts/validate.sh docs/dev-log.md --summary docs/dev-log-summary.md
+bash scripts/validate.sh docs/dev-log/ --summary docs/dev-log-summary.md
 
 # 严格模式（警告也视为错误）：
-bash .claude/skills/project-memory-manager/scripts/validate.sh docs/dev-log.md --strict
+bash scripts/validate.sh docs/dev-log/ --strict
 ```
 
 ## 📋 日志条目格式
 
-`dev-log.md` 中的每条记录遵循以下格式（≤ 500 字符）：
+`docs/dev-log/YYYY-MM-DD.md` 中的每条记录遵循以下格式（≤ 500 字符）：
 
 ```markdown
-## [2026-06-09] 为用户 API 添加 Redis 缓存
+### [14:30] 为用户 API 添加 Redis 缓存 @alice
 - **Change**: 将 /api/users 端点的内存缓存替换为 Redis
 - **Deps**: 新增 redis@5.0.0，移除 node-cache
 - **Gotcha**: 生产环境必须使用 rediss://（TLS）— 用 redis:// 会静默挂起
@@ -328,16 +328,16 @@ docs/
 packages/
   auth/
     docs/
-      dev-log.md           # auth 包的变更日志
+      dev-log/             # auth 包的每日日志
       dev-log-archive/
   api/
     docs/
-      dev-log.md           # api 包的变更日志
+      dev-log/             # api 包的每日日志
 ```
 
-- AI 同时读取**全局摘要**和**当前子包的 dev-log**
-- **冲突时以子包为准**，子包未定义时继承全局
-- 只更新当前子包的 dev-log，除非变更影响整个仓库
+- AI 同时读取**全局摘要**和**当前子包的每日日志**
+- **冲突时全局摘要为硬约束优先**，子包仅在实现细节层面有优先权
+- 只更新当前子包的每日日志，除非变更影响整个仓库
 
 ## 🔧 故障排查
 
