@@ -42,7 +42,7 @@ Every time the AI completes a code change, it:
 |---------|-------------|
 | **Rolling Window** | Keeps only the latest 15 daily log files — old ones auto-archive by quarter |
 | **Experience Extraction** | Recurring pitfalls (`⚠️` or `#promote`) get promoted to Summary (with user confirmation) |
-| **Circuit Breaker** | Stops code generation if a daily file exceeds 200 lines or total exceeds 30 files |
+| **Circuit Breaker** | Warns and suggests archival if a daily file exceeds 200 lines or total exceeds 30 files (never interrupts ongoing code generation) |
 | **Session Cache** | Reads memory files once per session, re-reads only on explicit trigger |
 | **Monorepo Support** | Global summary + per-package logs, global Summary is the hard constraint on conflict |
 | **Audit Trail** | Optional change history tracking (default OFF, enable on demand) |
@@ -104,7 +104,7 @@ The AI will create `docs/dev-log/`, `docs/dev-log-summary.md`, and `docs/dev-log
 No extra commands needed. The AI automatically:
 
 1. **Reads** memory files before any coding task
-2. **Writes** a log entry after each code change (appends to today's daily file)
+2. **Writes** a log entry after each logical task completes (appends to today's daily file, not after every file edit)
 3. **Archives** old daily files when the log directory exceeds 15 files
 4. **Promotes** recurring pitfalls to Summary (asks for confirmation)
 
@@ -115,7 +115,6 @@ No extra commands needed. The AI automatically:
 | `"Re-read dev-log"` | Force re-read memory files |
 | `"Remember this decision"` | AI asks whether to store as ADR or dev-log entry |
 | `"Enable audit trail"` | Turn on change history in Summary |
-| `"@disable auto-archive"` | Skip auto-archiving for this session |
 | `"Archive old entries now"` | Manually trigger archival |
 | `"Uninstall project memory"` | Remove injected rules and validation script (keeps log data) |
 
@@ -171,7 +170,6 @@ packages/
 | AI doesn't read logs automatically | Start your message with "Follow project-memory-manager skill" |
 | Archive files grow too large | Split by year: `archive/2025/`, `archive/2026/` — AI auto-adapts |
 | Branch conflicts in dev-log | Only maintain dev-log on main branch; resolve conflicts on merge |
-| Want to temporarily disable archiving | Say `@disable auto-archive` in conversation |
 
 ## 📜 License
 
@@ -217,7 +215,7 @@ MIT — see [LICENSE.txt](LICENSE.txt).
 |------|------|
 | **滚动窗口** | 仅保留最近 15 个日志文件 — 旧文件按季度自动归档 |
 | **经验提取** | 反复出现的坑（标记 `⚠️` 或 `#promote`）会被提升到摘要层（需用户确认） |
-| **熔断机制** | 单文件超过 200 行或总数超过 30 个文件时停止生成代码 |
+| **熔断机制** | 单文件超过 200 行或总数超过 30 个文件时警告并建议归档（不会中断正在进行的代码生成） |
 | **会话缓存** | 每次会话仅读取一次记忆文件，仅在明确触发时重新读取 |
 | **Monorepo 支持** | 全局摘要 + 各包独立日志，冲突时全局摘要为硬约束优先 |
 | **审计追踪** | 可选的变更历史记录（默认关闭，按需开启） |
@@ -279,7 +277,7 @@ AI 会使用模板创建 `docs/dev-log/`、`docs/dev-log-summary.md` 和 `docs/d
 无需额外指令。AI 会自动：
 
 1. **读取** — 编码任务前自动加载记忆文件
-2. **写入** — 每次代码变更后追加日志条目到当天的日志文件
+2. **写入** — 每次逻辑任务完成后追加日志条目到当天的日志文件（非每次文件编辑）
 3. **归档** — 日志文件超过 15 个时自动归档旧文件
 4. **提取** — 反复出现的坑会被提示提升到摘要层（需确认）
 
@@ -290,7 +288,6 @@ AI 会使用模板创建 `docs/dev-log/`、`docs/dev-log-summary.md` 和 `docs/d
 | `"重新读取 dev-log"` | 强制重新读取记忆文件 |
 | `"记住这个决策"` | AI 会询问是写入 ADR 还是 dev-log |
 | `"启用审计追踪"` | 在摘要中开启变更历史记录 |
-| `"@disable auto-archive"` | 本次会话跳过自动归档 |
 | `"现在归档旧条目"` | 手动触发归档 |
 | `"卸载 project memory"` | 移除注入的规则和校验脚本（保留日志数据） |
 
@@ -346,7 +343,6 @@ packages/
 | AI 不主动读取日志 | 在对话开头说"请遵循 project-memory-manager skill" |
 | 归档文件过大 | 按年份拆分：`archive/2025/`、`archive/2026/` — AI 会自动适应 |
 | 多分支协作冲突 | 建议只在主分支维护 dev-log，合并时人工解决冲突 |
-| 想临时禁用自动归档 | 在对话中说 `@disable auto-archive` |
 
 ## 📜 许可证
 
