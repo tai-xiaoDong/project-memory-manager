@@ -70,12 +70,12 @@ fi
 # --- Helpers ---
 print_error() {
     echo -e "  ${RED}✗${RESET} $1"
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 }
 
 print_warning() {
     echo -e "  ${YELLOW}⚠${RESET} $1"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS + 1))
 }
 
 print_ok() {
@@ -94,7 +94,11 @@ if [[ ! -d "$DEVLOG_DIR" ]]; then
 fi
 
 # Collect daily log files (only YYYY-MM-DD.md pattern)
-mapfile -t FILES < <(find "$DEVLOG_DIR" -maxdepth 1 -name '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md' | sort)
+# (while-read instead of mapfile: mapfile needs bash >= 4, macOS ships 3.2)
+FILES=()
+while IFS= read -r f; do
+    FILES+=("$f")
+done < <(find "$DEVLOG_DIR" -maxdepth 1 -name '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md' | sort)
 FILE_COUNT=${#FILES[@]}
 
 # Check 1: File count
@@ -106,8 +110,8 @@ fi
 
 TOTAL_ENTRIES=0
 
-# Check each daily file
-for f in "${FILES[@]}"; do
+# Check each daily file ("${FILES[@]+"..."}" guards set -u with an empty array on bash 3.2)
+for f in ${FILES[@]+"${FILES[@]}"}; do
     FNAME=$(basename "$f")
     TOTAL_LINES=$(wc -l < "$f" | tr -d ' ')
 
@@ -134,30 +138,28 @@ for f in "${FILES[@]}"; do
         fi
     fi
 
-    # Check 3: Entry size — measure character count between entry headers
-    OVERSIZED=$(awk -v max="$MAX_ENTRY_CHARS" '
-        /^### \[[0-9]{2}:[0-9]{2}\]/ {
-            if (buf != "" && length(buf) > max) {
-                print line_num ": " substr(header, 1, 60) " (" length(buf) " chars)"
-            }
-            header = $0
-            line_num = NR
-            buf = $0
-            next
+    # Check 3: Entry size — measure CHARACTER count between entry headers.
+    # (awk length() counts bytes on BSD awk — Chinese entries false-positive;
+    #  wc -m is locale-aware. First line of each temp file = header line number.)
+    ENTRY_TMP=$(mktemp -d "${TMPDIR:-/tmp}/pmm.XXXXXX")
+    awk -v dir="$ENTRY_TMP" '
+        /^### \[[0-9][0-9]:[0-9][0-9]\]/ {
+            n++
+            out = dir "/e" sprintf("%04d", n)
+            print NR > out
         }
-        { buf = buf "\n" $0 }
-        END {
-            if (buf != "" && length(buf) > max) {
-                print line_num ": " substr(header, 1, 60) " (" length(buf) " chars)"
-            }
-        }
-    ' "$f")
-
-    if [[ -n "$OVERSIZED" ]]; then
-        while IFS= read -r line; do
-            print_warning "${FNAME} oversized entry at $line (max ${MAX_ENTRY_CHARS} chars)"
-        done <<< "$OVERSIZED"
-    fi
+        n > 0 { print > out }
+    ' "$f"
+    for e in "$ENTRY_TMP"/e*; do
+        [ -f "$e" ] || continue
+        chars=$(wc -m < "$e" | tr -d ' ')
+        if [ "$chars" -gt $((MAX_ENTRY_CHARS + 20)) ]; then
+            line_num=$(sed -n '1p' "$e")
+            header=$(sed -n '2p' "$e" | cut -c1-60)
+            print_warning "${FNAME}: oversized entry at ${line_num}: ${header} (${chars} chars)"
+        fi
+    done
+    rm -rf "$ENTRY_TMP"
 
     # Check 6: Chronological order within file (entries should be oldest-first)
     TIMES=$(grep -oE '^### \[[0-9]{2}:[0-9]{2}\]' "$f" | grep -oE '[0-9]{2}:[0-9]{2}' || true)

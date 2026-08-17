@@ -53,7 +53,7 @@ Ask the user: **"Which AI coding tools does your team use?"** Options:
 | Continue | `.continue.rules` |
 | GitHub Copilot | `AGENTS.md` |
 
-For each selected tool, **append** the rule block below to the corresponding file (create if not exists). Place it at the **end** of the file, wrapped by comment delimiters for clean removal on uninstall. The injected block is a **concise reference** — the full behavioral rules are defined in Rules 1–7 of this SKILL.md and should be followed in their entirety.
+For each selected tool, **append** the rule block below to the corresponding file (create if not exists). Place it at the **end** of the file, wrapped by comment delimiters for clean removal on uninstall. The injected block is a **concise reference** — the full behavioral rules are defined in Rules 1–8 of this SKILL.md and should be followed in their entirety.
 
 ```markdown
 <!-- project-memory-manager BEGIN -->

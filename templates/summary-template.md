@@ -1,5 +1,7 @@
 # Project Persistent Decision Summary (Last Updated: <CURRENT_DATE>)
 
+<!-- promotion-threshold: 3 -->
+
 ## Core Constraints
 <!-- Database type, auth scheme, prohibited tech, coding standards, etc. -->
 - TBD
